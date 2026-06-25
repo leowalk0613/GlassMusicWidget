@@ -1,6 +1,6 @@
 # 音乐小部件 (Music Widget)
 
-完全由豆包办公模式AI开发的一款具有半透明质感的 Android 桌面音乐小部件，支持根据专辑封面自动提取主色调变色。
+个人自用软件，完全由豆包办公模式AI开发的一款具有半透明质感的 Android 桌面音乐小部件，支持根据专辑封面自动提取主色调变色。
 
 ## ✨ 功能特性
 
@@ -159,3 +159,12 @@ RemoteViews 存在一些兼容性限制，开发中需要注意：
 ## 📄 许可证
 
 MIT License
+
+效果图：
+<img width="1200" height="2670" alt="Screenshot_2026-06-25-13-14-17-823_com glassmusic widget" src="https://github.com/user-attachments/assets/fe0ae388-a5b1-4be0-bd95-f7e03c4ddd84" />
+<img width="1200" height="655" alt="Screenshot_2026-06-25-13-14-27-893_com miui home-edit" src="https://github.com/user-attachments/assets/32cf196d-36ba-4c70-a8b7-8ec8dd9caf1f" />
+<img width="1200" height="634" alt="Screenshot_2026-06-25-13-14-48-030_com miui home-edit" src="https://github.com/user-attachments/assets/2b9050fe-fde2-4a00-87fb-7dfb8590b5f4" />
+<img width="1200" height="617" alt="Screenshot_2026-06-25-13-15-06-129_com miui home-edit" src="https://github.com/user-attachments/assets/cdbaceba-ea69-4824-8a8b-9a48df972ffc" />
+
+
+
