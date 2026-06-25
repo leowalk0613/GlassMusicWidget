@@ -160,7 +160,8 @@ RemoteViews 存在一些兼容性限制，开发中需要注意：
 
 MIT License
 
-效果图：
+## 📄 效果图
+
 <img width="1200" height="2670" alt="Screenshot_2026-06-25-13-14-17-823_com glassmusic widget" src="https://github.com/user-attachments/assets/fe0ae388-a5b1-4be0-bd95-f7e03c4ddd84" />
 <img width="1200" height="655" alt="Screenshot_2026-06-25-13-14-27-893_com miui home-edit" src="https://github.com/user-attachments/assets/32cf196d-36ba-4c70-a8b7-8ec8dd9caf1f" />
 <img width="1200" height="634" alt="Screenshot_2026-06-25-13-14-48-030_com miui home-edit" src="https://github.com/user-attachments/assets/2b9050fe-fde2-4a00-87fb-7dfb8590b5f4" />
