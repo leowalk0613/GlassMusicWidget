@@ -138,9 +138,13 @@ class MainActivity : AppCompatActivity() {
 
     private fun updateWidget() {
         try {
-            val intent = Intent(this, MusicWidgetProvider::class.java)
-            intent.action = MusicWidgetProvider.ACTION_UPDATE_WIDGET
-            sendBroadcast(intent)
+            val intent4x2 = Intent(this, MusicWidgetProvider::class.java)
+            intent4x2.action = BaseMusicWidgetProvider.ACTION_UPDATE_WIDGET
+            sendBroadcast(intent4x2)
+
+            val intent4x1 = Intent(this, MusicWidgetProvider4x1::class.java)
+            intent4x1.action = BaseMusicWidgetProvider.ACTION_UPDATE_WIDGET
+            sendBroadcast(intent4x1)
         } catch (e: Exception) {
             e.printStackTrace()
         }

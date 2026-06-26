@@ -34,7 +34,7 @@
             </intent-filter>
         </activity>
 
-        <!-- 音乐小部件提供者 -->
+        <!-- 音乐小部件提供者 4x2 -->
         <receiver
             android:name=".MusicWidgetProvider"
             android:exported="true">
@@ -49,6 +49,23 @@
             <meta-data
                 android:name="android.appwidget.provider"
                 android:resource="@xml/music_widget_info" />
+        </receiver>
+
+        <!-- 音乐小部件提供者 4x1 -->
+        <receiver
+            android:name=".MusicWidgetProvider4x1"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+                <action android:name="com.glassmusic.widget.ACTION_PLAY_PAUSE" />
+                <action android:name="com.glassmusic.widget.ACTION_NEXT" />
+                <action android:name="com.glassmusic.widget.ACTION_PREVIOUS" />
+                <action android:name="com.glassmusic.widget.ACTION_UPDATE_WIDGET" />
+            </intent-filter>
+
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/music_widget_info_4x1" />
         </receiver>
 
         <!-- 音乐监听服务 - 继承自NotificationListenerService -->
