@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">音乐小部件</string>
+    <string name="widget_description">毛玻璃质感音乐桌面小部件，支持专辑封面取色渐变</string>
+    
+    <!-- Widget相关 -->
+    <string name="no_music_playing">未在播放音乐</string>
+    <string name="tap_to_open_music">点击打开音乐应用</string>
+    <string name="album_art">专辑封面</string>
+    <string name="play_pause">播放/暂停</string>
+    <string name="previous">上一首</string>
+    <string name="next">下一首</string>
+    
+    <!-- 权限相关 -->
+    <string name="notification_access_title">通知访问权限</string>
+    <string name="notification_access_desc">需要授予通知访问权限以读取音乐播放信息</string>
+    <string name="grant_permission">授予权限</string>
+    
+    <!-- 小部件预览描述 -->
+    <string name="widget_preview">音乐小部件 4x2</string>
+    <string name="widget_description_4x1">毛玻璃质感音乐桌面小部件（4x1 紧凑版），支持专辑封面取色渐变</string>
+    <string name="widget_preview_4x1">音乐小部件 4x1</string>
+</resources>

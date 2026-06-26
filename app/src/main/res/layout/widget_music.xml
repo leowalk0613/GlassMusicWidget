@@ -1,0 +1,115 @@
+<?xml version="1.0" encoding="utf-8"?>
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:padding="6dp">
+
+    <!-- 毛玻璃背景层 -->
+    <ImageView
+        android:id="@+id/glass_background"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:src="@drawable/glass_background"
+        android:scaleType="fitXY" />
+
+    <!-- 内容层 -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:orientation="horizontal"
+        android:padding="14dp"
+        android:gravity="center_vertical">
+
+        <!-- 专辑封面（放大） -->
+        <ImageView
+            android:id="@+id/iv_album_art"
+            android:layout_width="115dp"
+            android:layout_height="115dp"
+            android:scaleType="centerCrop"
+            android:contentDescription="@null" />
+
+        <!-- 右侧信息区域 - 高度和专辑封面一致，确保顶部对齐 -->
+        <LinearLayout
+            android:layout_width="0dp"
+            android:layout_height="115dp"
+            android:layout_weight="1"
+            android:layout_marginStart="16dp"
+            android:orientation="vertical"
+            android:gravity="top">
+
+            <!-- 歌曲标题 -->
+            <TextView
+                android:id="@+id/tv_song_title"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="0dp"
+                android:text="未在播放音乐"
+                android:textColor="#FFFFFF"
+                android:textSize="17sp"
+                android:textStyle="bold"
+                android:maxLines="1"
+                android:ellipsize="end" />
+
+            <!-- 歌手名 -->
+            <TextView
+                android:id="@+id/tv_artist_name"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="4dp"
+                android:text="点击打开音乐应用"
+                android:textColor="#C0FFFFFF"
+                android:textSize="13sp"
+                android:maxLines="1"
+                android:ellipsize="end" />
+
+            <!-- 播放状态 + 应用名 -->
+            <TextView
+                android:id="@+id/tv_play_status"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="6dp"
+                android:text="已暂停"
+                android:textColor="#B0FFFFFF"
+                android:textSize="11sp" />
+
+            <!-- 控制按钮区域 -->
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="10dp"
+                android:orientation="horizontal"
+                android:gravity="center">
+
+                <!-- 上一首 -->
+                <ImageView
+                    android:id="@+id/btn_previous"
+                    android:layout_width="0dp"
+                    android:layout_height="40dp"
+                    android:layout_weight="1"
+                    android:src="@drawable/ic_skip_previous"
+                    android:scaleType="fitCenter"
+                    android:contentDescription="@null" />
+
+                <!-- 播放/暂停 -->
+                <ImageView
+                    android:id="@+id/btn_play_pause"
+                    android:layout_width="0dp"
+                    android:layout_height="65dp"
+                    android:layout_weight="1"
+                    android:src="@drawable/ic_play"
+                    android:scaleType="fitCenter"
+                    android:contentDescription="@null" />
+
+                <!-- 下一首 -->
+                <ImageView
+                    android:id="@+id/btn_next"
+                    android:layout_width="0dp"
+                    android:layout_height="40dp"
+                    android:layout_weight="1"
+                    android:src="@drawable/ic_skip_next"
+                    android:scaleType="fitCenter"
+                    android:contentDescription="@null" />
+            </LinearLayout>
+        </LinearLayout>
+    </LinearLayout>
+</FrameLayout>
