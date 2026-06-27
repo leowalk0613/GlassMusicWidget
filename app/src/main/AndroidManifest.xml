@@ -6,11 +6,20 @@
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK" />
     <uses-permission android:name="android.permission.WAKE_LOCK" />
+    <uses-permission android:name="android.permission.INTERNET" />
     
     <!-- 最低支持 API 31 (Android 12) -->
     <uses-sdk
         android:minSdkVersion="31"
         android:targetSdkVersion="34" />
+
+    <!-- 解析 MediaSession 来源应用的显示名称（Android 11+ 包可见性） -->
+    <queries>
+        <intent>
+            <action android:name="android.intent.action.MAIN" />
+            <category android:name="android.intent.category.LAUNCHER" />
+        </intent>
+    </queries>
 
     <application
         android:allowBackup="true"

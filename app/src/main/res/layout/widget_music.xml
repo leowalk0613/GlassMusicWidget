@@ -1,16 +1,31 @@
 <?xml version="1.0" encoding="utf-8"?>
 <FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
-    android:layout_height="match_parent"
-    android:padding="6dp">
+    android:layout_height="match_parent">
 
-    <!-- 毛玻璃背景层 -->
+    <ImageView
+        android:id="@+id/tint_background"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:src="@drawable/widget_tint_fill"
+        android:scaleType="fitXY"
+        android:contentDescription="@null" />
+
     <ImageView
         android:id="@+id/glass_background"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
-        android:src="@drawable/glass_background"
-        android:scaleType="fitXY" />
+        android:src="@drawable/widget_glass_background"
+        android:scaleType="fitXY"
+        android:contentDescription="@null" />
+
+    <ImageView
+        android:id="@+id/glass_border"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:src="@drawable/widget_glass_border"
+        android:scaleType="fitXY"
+        android:contentDescription="@null" />
 
     <!-- 内容层 -->
     <LinearLayout

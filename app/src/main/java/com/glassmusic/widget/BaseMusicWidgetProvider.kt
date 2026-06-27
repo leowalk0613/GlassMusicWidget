@@ -3,7 +3,6 @@ package com.glassmusic.widget
 import android.app.PendingIntent
 import android.appwidget.AppWidgetManager
 import android.appwidget.AppWidgetProvider
-import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
 import android.graphics.Bitmap
@@ -17,17 +16,17 @@ import android.media.MediaMetadata
 import android.media.session.MediaController
 import android.media.session.PlaybackState
 import android.os.Build
+import android.os.SystemClock
 import android.util.Log
+import android.view.View
 import android.widget.RemoteViews
-import androidx.palette.graphics.Palette
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
+import java.util.Locale
 
 abstract class BaseMusicWidgetProvider : AppWidgetProvider() {
     companion object {
         private const val TAG = "BaseMusicWidgetProvider"
+        private const val WIDGET_UPDATE_THROTTLE_MS = 500L
+        private val lastWidgetUpdateMs = mutableMapOf<Int, Long>()
 
         private const val COVER_CORNER_RATIO = 0.12f
 
@@ -38,8 +37,8 @@ abstract class BaseMusicWidgetProvider : AppWidgetProvider() {
         const val KEY_TEXT_COLOR = "text_color"
         const val KEY_ICON_STYLE = "icon_style"
 
-        const val DEFAULT_GLASS_ALPHA = 50
-        const val DEFAULT_TINT_ALPHA = 50
+        const val DEFAULT_GLASS_ALPHA = 55
+        const val DEFAULT_TINT_ALPHA = 90
         const val DEFAULT_AUTO_COLOR = true
         const val DEFAULT_TEXT_COLOR = true
         const val DEFAULT_ICON_STYLE = 1
@@ -53,7 +52,7 @@ abstract class BaseMusicWidgetProvider : AppWidgetProvider() {
         private var currentPlaybackState: PlaybackState? = null
         private var mediaController: MediaController? = null
 
-        private val DEFAULT_COLOR = Color.parseColor("#888888")
+        private val appNameCache = mutableMapOf<String, String>()
 
         fun setMediaController(controller: MediaController?) {
             mediaController = controller
@@ -67,6 +66,16 @@ abstract class BaseMusicWidgetProvider : AppWidgetProvider() {
             currentPlaybackState = state
         }
 
+        fun syncFromMediaController() {
+            val controller = mediaController ?: return
+            try {
+                currentMetadata = controller.metadata
+                currentPlaybackState = controller.playbackState
+            } catch (e: Exception) {
+                Log.e(TAG, "Sync media controller error", e)
+            }
+        }
+
         private fun getSettings(context: Context): Settings {
             val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
             return Settings(
@@ -78,6 +87,8 @@ abstract class BaseMusicWidgetProvider : AppWidgetProvider() {
             )
         }
 
+        fun readSettings(context: Context): Settings = getSettings(context)
+
         data class Settings(
             val glassAlpha: Int,
             val tintAlpha: Int,
@@ -87,9 +98,11 @@ abstract class BaseMusicWidgetProvider : AppWidgetProvider() {
         )
     }
 
-    protected abstract fun getLayoutResId(): Int
+    protected abstract fun getLayoutResId(context: Context): Int
 
     protected abstract fun getProviderClass(): Class<out BaseMusicWidgetProvider>
+
+    protected open fun getCornerRadiusDp(): Float = 20f
 
     override fun onUpdate(
         context: Context,
@@ -100,11 +113,13 @@ abstract class BaseMusicWidgetProvider : AppWidgetProvider() {
         Log.d(TAG, "onUpdate called")
 
         try {
-            val serviceIntent = Intent(context, MusicMonitorService::class.java)
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-                context.startForegroundService(serviceIntent)
-            } else {
-                context.startService(serviceIntent)
+            if (!MusicMonitorService.isRunning()) {
+                val serviceIntent = Intent(context, MusicMonitorService::class.java)
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                    context.startForegroundService(serviceIntent)
+                } else {
+                    context.startService(serviceIntent)
+                }
             }
         } catch (e: Exception) {
             Log.e(TAG, "Start service error", e)
@@ -130,12 +145,7 @@ abstract class BaseMusicWidgetProvider : AppWidgetProvider() {
                 handlePrevious()
             }
             ACTION_UPDATE_WIDGET -> {
-                val appWidgetManager = AppWidgetManager.getInstance(context)
-                val componentName = ComponentName(context, getProviderClass())
-                val appWidgetIds = appWidgetManager.getAppWidgetIds(componentName)
-                for (appWidgetId in appWidgetIds) {
-                    updateAppWidget(context, appWidgetManager, appWidgetId)
-                }
+                WidgetRefreshCoordinator.requestPush(context, immediate = true)
             }
         }
     }
@@ -171,34 +181,83 @@ abstract class BaseMusicWidgetProvider : AppWidgetProvider() {
         }
     }
 
-    private fun updateAppWidget(
+    internal fun updateAppWidget(
         context: Context,
         appWidgetManager: AppWidgetManager,
         appWidgetId: Int
     ) {
-        Log.d(TAG, "updateAppWidget: $appWidgetId")
+        val now = SystemClock.elapsedRealtime()
+        val last = lastWidgetUpdateMs[appWidgetId] ?: 0L
+        if (now - last < WIDGET_UPDATE_THROTTLE_MS) {
+            return
+        }
+        lastWidgetUpdateMs[appWidgetId] = now
+
+        Log.w(AppBuildInfo.LOG_TAG, "updateAppWidget id=$appWidgetId ${AppBuildInfo.MARKER}")
 
         try {
-            val views = RemoteViews(context.packageName, getLayoutResId())
+            val views = RemoteViews(context.packageName, getLayoutResId(context))
 
             val settings = getSettings(context)
 
-            val glassAlphaFloat = settings.glassAlpha / 100f
-            views.setFloat(R.id.glass_background, "setAlpha", glassAlphaFloat)
+            syncFromMediaController()
+
+            // 服务已在后台加载封面；小部件只读取缓存，避免 prepareForUpdate 清空已绑定的图
+            if (!MusicMonitorService.isRunning()) {
+                WidgetArtCache.prepareForUpdate(
+                    context,
+                    currentMetadata,
+                    settings.autoColor,
+                    settings.tintAlpha,
+                    mediaController?.packageName,
+                    allowBlockingLoad = currentMetadata != null
+                )
+            }
+
+            val tintColor = computeTintColor(context, currentMetadata, settings)
 
             applyIconStyle(views, settings.iconStyle)
 
             setupControlIntents(context, views)
             setupAlbumArtIntent(context, views)
 
-            updateMusicInfo(context, views, appWidgetManager, appWidgetId, settings)
+            updateMusicInfo(context, views, settings, tintColor)
 
-            updatePlaybackState(context, views, settings.iconStyle)
+            applyTransparentStyleLayers(
+                views,
+                tintColor,
+                settings.glassAlpha
+            )
+
+            updatePlaybackState(context, views, settings, tintColor)
 
             appWidgetManager.updateAppWidget(appWidgetId, views)
             Log.d(TAG, "Widget updated successfully")
         } catch (e: Exception) {
             Log.e(TAG, "Update widget error", e)
+            showFallbackWidget(context, appWidgetManager, appWidgetId)
+        }
+    }
+
+    private fun showFallbackWidget(
+        context: Context,
+        appWidgetManager: AppWidgetManager,
+        appWidgetId: Int
+    ) {
+        try {
+            val views = RemoteViews(context.packageName, getLayoutResId(context))
+            applyTransparentStyleLayers(
+                views,
+                WidgetColors.fallbackTint(DEFAULT_TINT_ALPHA),
+                DEFAULT_GLASS_ALPHA
+            )
+            views.setTextViewText(R.id.tv_song_title, "未在播放")
+            views.setTextViewText(R.id.tv_artist_name, "—")
+            views.setTextViewText(R.id.tv_play_status, "未播放")
+            views.setImageViewResource(R.id.iv_album_art, R.drawable.default_album)
+            appWidgetManager.updateAppWidget(appWidgetId, views)
+        } catch (e: Exception) {
+            Log.e(TAG, "Fallback widget error", e)
         }
     }
 
@@ -237,6 +296,8 @@ abstract class BaseMusicWidgetProvider : AppWidgetProvider() {
     }
 
     private fun setupAlbumArtIntent(context: Context, views: RemoteViews) {
+        val clickTargetId = R.id.iv_album_art
+
         try {
             val controller = mediaController
             if (controller != null) {
@@ -248,7 +309,7 @@ abstract class BaseMusicWidgetProvider : AppWidgetProvider() {
                         context, 3, launchIntent,
                         PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
                     )
-                    views.setOnClickPendingIntent(R.id.iv_album_art, pendingIntent)
+                    views.setOnClickPendingIntent(clickTargetId, pendingIntent)
                     return
                 }
             }
@@ -258,7 +319,7 @@ abstract class BaseMusicWidgetProvider : AppWidgetProvider() {
                 context, 4, settingsIntent,
                 PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
             )
-            views.setOnClickPendingIntent(R.id.iv_album_art, pendingIntent)
+            views.setOnClickPendingIntent(clickTargetId, pendingIntent)
         } catch (e: Exception) {
             Log.e(TAG, "Setup album art intent error", e)
             try {
@@ -268,7 +329,7 @@ abstract class BaseMusicWidgetProvider : AppWidgetProvider() {
                     context, 4, settingsIntent,
                     PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
                 )
-                views.setOnClickPendingIntent(R.id.iv_album_art, pendingIntent)
+                views.setOnClickPendingIntent(clickTargetId, pendingIntent)
             } catch (e2: Exception) {
                 Log.e(TAG, "Fallback settings intent error", e2)
             }
@@ -278,9 +339,8 @@ abstract class BaseMusicWidgetProvider : AppWidgetProvider() {
     private fun updateMusicInfo(
         context: Context,
         views: RemoteViews,
-        appWidgetManager: AppWidgetManager,
-        appWidgetId: Int,
-        settings: Settings
+        settings: Settings,
+        tintColor: Int
     ) {
         val metadata = currentMetadata
 
@@ -288,14 +348,7 @@ abstract class BaseMusicWidgetProvider : AppWidgetProvider() {
             views.setTextViewText(R.id.tv_play_status, "未播放")
             views.setTextViewText(R.id.tv_song_title, "未在播放")
             views.setTextViewText(R.id.tv_artist_name, "—")
-
-            setBackgroundColor(views, DEFAULT_COLOR, settings.tintAlpha)
-
-            if (settings.textColor) {
-                setTextColors(views, Color.WHITE)
-            } else {
-                setTextColors(views, Color.WHITE)
-            }
+            setTextColors(views, Color.WHITE)
             return
         }
 
@@ -304,47 +357,91 @@ abstract class BaseMusicWidgetProvider : AppWidgetProvider() {
         views.setTextViewText(R.id.tv_song_title, title)
         views.setTextViewText(R.id.tv_artist_name, artist)
 
-        val albumArt = metadata.getBitmap(MediaMetadata.METADATA_KEY_ALBUM_ART)
+        val albumArt = resolveDisplayAlbumArt(metadata)
+        views.setImageViewResource(R.id.iv_album_art, R.drawable.default_album)
         if (albumArt != null) {
-            val coverSize = Math.min(albumArt.width, albumArt.height)
-            val roundedCover = getRoundedBitmap(albumArt, coverSize * COVER_CORNER_RATIO)
+            val roundedCover = getRoundedBitmap(albumArt, minOf(albumArt.width, albumArt.height) * COVER_CORNER_RATIO)
             views.setImageViewBitmap(R.id.iv_album_art, roundedCover)
-
-            if (settings.autoColor) {
-                CoroutineScope(Dispatchers.Main).launch {
-                    val dominantColor = extractDominantColor(albumArt, settings.tintAlpha)
-                    setBackgroundColor(views, dominantColor)
-
-                    if (settings.textColor) {
-                        val textColor = getTextColorForBackground(dominantColor)
-                        setTextColors(views, textColor)
-                    }
-
-                    appWidgetManager.updateAppWidget(appWidgetId, views)
-                }
-            } else {
-                setBackgroundColor(views, DEFAULT_COLOR, settings.tintAlpha)
-
-                if (settings.textColor) {
-                    setTextColors(views, Color.WHITE)
-                }
-            }
+            Log.w(AppBuildInfo.LOG_TAG, "cover set ${albumArt.width}x${albumArt.height} for \"$title\"")
         } else {
-            setBackgroundColor(views, DEFAULT_COLOR, settings.tintAlpha)
+            Log.w(AppBuildInfo.LOG_TAG, "cover missing for \"$title\" cached=${WidgetArtCache.getWidgetCover(metadata) != null}")
+        }
 
-            if (settings.textColor) {
-                setTextColors(views, Color.WHITE)
-            }
+        if (settings.textColor) {
+            setTextColors(views, getTextColorForBackground(tintColor))
+        } else {
+            setTextColors(views, Color.WHITE)
         }
     }
 
-    private fun setBackgroundColor(views: RemoteViews, color: Int) {
-        views.setInt(R.id.glass_background, "setColorFilter", color)
+    private fun computeTintColor(
+        context: Context,
+        metadata: MediaMetadata?,
+        settings: Settings
+    ): Int {
+        if (!settings.autoColor) {
+            return WidgetColors.fallbackTint(settings.tintAlpha)
+        }
+
+        val art = metadata?.let { WidgetArtCache.getDisplayArt(it, null) }
+            ?: WidgetArtCache.getAlbumArt()
+
+        if (art != null && !art.isRecycled) {
+            return try {
+                val rgb = WidgetColors.extractDominantRgbBlocking(art)
+                WidgetColors.buildTintColor(rgb, settings.tintAlpha)
+            } catch (e: Exception) {
+                Log.w(TAG, "Tint extraction failed", e)
+                WidgetColors.fallbackTint(settings.tintAlpha)
+            }
+        }
+        return WidgetColors.fallbackTint(settings.tintAlpha)
     }
 
-    private fun setBackgroundColor(views: RemoteViews, color: Int, alpha: Int) {
-        val tintedColor = Color.argb(alpha, Color.red(color), Color.green(color), Color.blue(color))
-        views.setInt(R.id.glass_background, "setColorFilter", tintedColor)
+    /** 小部件展示封面 */
+    private fun resolveDisplayAlbumArt(metadata: MediaMetadata?): Bitmap? {
+        return WidgetArtCache.getWidgetCover(metadata)
+            ?: metadata?.let { WidgetArtCache.getDisplayArt(it, mediaController?.packageName) }
+            ?: WidgetArtCache.getAlbumArt()
+    }
+
+    private fun applyTransparentStyleLayers(
+        views: RemoteViews,
+        tintColor: Int,
+        glassAlpha: Int
+    ) {
+        val transparency = (glassAlpha / 100f).coerceIn(0f, 1f)
+        val opaque = 1f - transparency
+        val frostStrength = opaque * opaque * 0.4f
+
+        views.setImageViewResource(R.id.tint_background, getTintFillDrawableRes())
+        views.setInt(R.id.tint_background, "setColorFilter", tintColor)
+
+        views.setImageViewResource(R.id.glass_background, getGlassBackgroundDrawableRes())
+        views.setViewVisibility(R.id.glass_background, View.VISIBLE)
+        views.setFloat(R.id.glass_background, "setAlpha", frostStrength)
+
+        val tintViewAlpha = if (transparency >= 1f) 0f else 0.03f + opaque * 0.97f
+        views.setFloat(R.id.tint_background, "setAlpha", tintViewAlpha)
+
+        val borderAlpha = 0.15f + opaque * 0.85f
+        views.setFloat(R.id.glass_border, "setAlpha", borderAlpha)
+    }
+
+    private fun getTintFillDrawableRes(): Int {
+        return if (getCornerRadiusDp() >= 24f) {
+            R.drawable.widget_tint_fill_4x1
+        } else {
+            R.drawable.widget_tint_fill
+        }
+    }
+
+    private fun getGlassBackgroundDrawableRes(): Int {
+        return if (getCornerRadiusDp() >= 24f) {
+            R.drawable.widget_glass_background_4x1
+        } else {
+            R.drawable.widget_glass_background
+        }
     }
 
     private fun setTextColors(views: RemoteViews, color: Int) {
@@ -352,8 +449,15 @@ abstract class BaseMusicWidgetProvider : AppWidgetProvider() {
         views.setTextColor(R.id.tv_song_title, color)
         views.setTextColor(R.id.tv_artist_name, color)
         views.setInt(R.id.btn_previous, "setColorFilter", color)
-        views.setInt(R.id.btn_play_pause, "setColorFilter", color)
         views.setInt(R.id.btn_next, "setColorFilter", color)
+    }
+
+    private fun applyPlayButton(views: RemoteViews, isPlaying: Boolean, color: Int) {
+        views.setImageViewResource(
+            R.id.btn_play_pause,
+            if (isPlaying) R.drawable.ic_pause else R.drawable.ic_play
+        )
+        views.setInt(R.id.btn_play_pause, "setColorFilter", color)
     }
 
     private fun calculateLuminance(color: Int): Double {
@@ -369,7 +473,13 @@ abstract class BaseMusicWidgetProvider : AppWidgetProvider() {
     }
 
     private fun getTextColorForBackground(backgroundColor: Int): Int {
-        val luminance = calculateLuminance(backgroundColor)
+        val opaque = Color.argb(
+            255,
+            Color.red(backgroundColor),
+            Color.green(backgroundColor),
+            Color.blue(backgroundColor)
+        )
+        val luminance = calculateLuminance(opaque)
         return if (luminance > 0.5) {
             Color.BLACK
         } else {
@@ -409,47 +519,50 @@ abstract class BaseMusicWidgetProvider : AppWidgetProvider() {
         }
     }
 
-    private suspend fun extractDominantColor(bitmap: Bitmap, tintAlpha: Int): Int = withContext(Dispatchers.Default) {
-        try {
-            val palette = Palette.from(bitmap).generate()
-            val color = palette.getVibrantColor(
-                palette.getDominantColor(DEFAULT_COLOR)
-            )
-            Color.argb(tintAlpha, Color.red(color), Color.green(color), Color.blue(color))
+    private fun updatePlaybackState(
+        context: Context,
+        views: RemoteViews,
+        settings: Settings,
+        tintColor: Int
+    ) {
+        val playbackState = mediaController?.playbackState ?: currentPlaybackState
+        val isPlaying = playbackState?.state == PlaybackState.STATE_PLAYING
+        val appName = try {
+            getCurrentAppName()
         } catch (e: Exception) {
-            Log.e(TAG, "Palette extraction error", e)
-            DEFAULT_COLOR
+            Log.w(TAG, "App name fallback: ${e.message}")
+            formatFallbackAppName(mediaController?.packageName.orEmpty())
         }
-    }
 
-    private fun updatePlaybackState(context: Context, views: RemoteViews, iconStyle: Int) {
-        val state = currentPlaybackState
-        val isPlaying = state?.state == PlaybackState.STATE_PLAYING
-
-        val appName = getCurrentAppName(context)
-
-        if (isPlaying) {
-            views.setImageViewResource(R.id.btn_play_pause, R.drawable.ic_pause)
-            views.setTextViewText(R.id.tv_play_status, "正在播放 · $appName")
+        val buttonColor = if (settings.textColor) {
+            getTextColorForBackground(tintColor)
         } else {
-            views.setImageViewResource(R.id.btn_play_pause, R.drawable.ic_play)
-            views.setTextViewText(R.id.tv_play_status, "已暂停 · $appName")
+            Color.WHITE
+        }
+        applyPlayButton(views, isPlaying, buttonColor)
+
+        val statusText = when {
+            currentMetadata == null -> "未播放"
+            isPlaying -> "正在播放 · $appName"
+            else -> "已暂停 · $appName"
+        }
+        views.setTextViewText(R.id.tv_play_status, statusText)
+    }
+
+    private fun getCurrentAppName(): String {
+        val packageName = mediaController?.packageName?.takeIf { it.isNotBlank() } ?: return "未知应用"
+        return appNameCache.getOrPut(packageName) {
+            formatFallbackAppName(packageName)
         }
     }
 
-    private fun getCurrentAppName(context: Context): String {
-        return try {
-            val controller = mediaController
-            if (controller != null) {
-                val packageName = controller.packageName
-                val appInfo = context.packageManager.getApplicationInfo(packageName, 0)
-                context.packageManager.getApplicationLabel(appInfo).toString()
-            } else {
-                "未知应用"
-            }
-        } catch (e: Exception) {
-            Log.e(TAG, "Get app name error", e)
-            "音乐应用"
+    private fun formatFallbackAppName(packageName: String): String {
+        val segment = packageName.substringAfterLast('.')
+        if (segment.isBlank()) {
+            return "音乐应用"
+        }
+        return segment.replaceFirstChar { char ->
+            if (char.isLowerCase()) char.titlecase(Locale.getDefault()) else char.toString()
         }
     }
 

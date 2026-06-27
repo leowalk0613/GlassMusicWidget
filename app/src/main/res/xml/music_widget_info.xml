@@ -8,6 +8,7 @@
     android:widgetCategory="home_screen"
     android:previewImage="@drawable/ic_music_note"
     android:description="@string/widget_description"
+    android:label="@string/style_name_transparent"
     android:minResizeWidth="180dp"
     android:minResizeHeight="80dp"
     android:targetCellWidth="4"

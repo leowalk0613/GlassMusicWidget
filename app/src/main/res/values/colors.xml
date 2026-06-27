@@ -5,14 +5,14 @@
     <color name="white_secondary">#E0FFFFFF</color>
     <color name="white_tertiary">#B0FFFFFF</color>
     
-    <!-- 毛玻璃背景色 -->
-    <color name="glass_background">#30FFFFFF</color>
-    <color name="glass_border">#40FFFFFF</color>
+    <!-- 通透样式背景色 -->
+    <color name="glass_background">#28FFFFFF</color>
+    <color name="glass_border">#55FFFFFF</color>
     
     <!-- 渐变相关 -->
     <color name="gradient_start">#00000000</color>
-    <color name="gradient_center">#20000000</color>
-    <color name="gradient_end">#60000000</color>
+    <color name="gradient_center">#66000000</color>
+    <color name="gradient_end">#88000000</color>
     
     <!-- 主题色 -->
     <color name="primary">#2196F3</color>

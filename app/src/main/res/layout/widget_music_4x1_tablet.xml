@@ -1,15 +1,31 @@
 <?xml version="1.0" encoding="utf-8"?>
 <FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
-    android:layout_height="match_parent"
-    android:padding="6dp">
+    android:layout_height="match_parent">
+
+    <ImageView
+        android:id="@+id/tint_background"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:src="@drawable/widget_tint_fill_4x1"
+        android:scaleType="fitXY"
+        android:contentDescription="@null" />
 
     <ImageView
         android:id="@+id/glass_background"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
         android:src="@drawable/widget_glass_background_4x1"
-        android:scaleType="fitXY" />
+        android:scaleType="fitXY"
+        android:contentDescription="@null" />
+
+    <ImageView
+        android:id="@+id/glass_border"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:src="@drawable/widget_glass_border_4x1"
+        android:scaleType="fitXY"
+        android:contentDescription="@null" />
 
     <LinearLayout
         android:layout_width="match_parent"
@@ -20,26 +36,26 @@
 
         <ImageView
             android:id="@+id/iv_album_art"
-            android:layout_width="80dp"
-            android:layout_height="80dp"
+            android:layout_width="88dp"
+            android:layout_height="88dp"
             android:scaleType="centerCrop"
             android:contentDescription="@null" />
 
         <LinearLayout
             android:layout_width="0dp"
-            android:layout_height="80dp"
+            android:layout_height="wrap_content"
             android:layout_weight="1"
             android:layout_marginStart="14dp"
-            android:orientation="vertical"
-            android:gravity="top">
+            android:orientation="vertical">
 
             <TextView
                 android:id="@+id/tv_song_title"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
+                android:layout_marginTop="2dp"
                 android:text="未在播放音乐"
                 android:textColor="#FFFFFF"
-                android:textSize="16sp"
+                android:textSize="17sp"
                 android:textStyle="bold"
                 android:maxLines="1"
                 android:ellipsize="end" />
@@ -48,10 +64,10 @@
                 android:id="@+id/tv_artist_name"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="3dp"
+                android:layout_marginTop="2dp"
                 android:text="点击打开音乐应用"
                 android:textColor="#C0FFFFFF"
-                android:textSize="12sp"
+                android:textSize="13sp"
                 android:maxLines="1"
                 android:ellipsize="end" />
 
@@ -59,7 +75,7 @@
                 android:id="@+id/tv_play_status"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="4dp"
+                android:layout_marginTop="2dp"
                 android:text="已暂停"
                 android:textColor="#B0FFFFFF"
                 android:textSize="11sp"
@@ -69,14 +85,14 @@
             <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="6dp"
+                android:layout_marginTop="5dp"
                 android:orientation="horizontal"
                 android:gravity="center">
 
                 <ImageView
                     android:id="@+id/btn_previous"
                     android:layout_width="0dp"
-                    android:layout_height="30dp"
+                    android:layout_height="32dp"
                     android:layout_weight="1"
                     android:src="@drawable/ic_skip_previous"
                     android:scaleType="fitCenter"
@@ -94,7 +110,7 @@
                 <ImageView
                     android:id="@+id/btn_next"
                     android:layout_width="0dp"
-                    android:layout_height="30dp"
+                    android:layout_height="32dp"
                     android:layout_weight="1"
                     android:src="@drawable/ic_skip_next"
                     android:scaleType="fitCenter"

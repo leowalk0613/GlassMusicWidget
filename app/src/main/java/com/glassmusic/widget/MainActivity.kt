@@ -9,6 +9,7 @@ import android.media.session.MediaSessionManager
 import android.os.Build
 import android.os.Bundle
 import android.provider.Settings
+import android.util.Log
 import android.widget.TextView
 import android.widget.ImageView
 import androidx.appcompat.app.AppCompatActivity
@@ -30,8 +31,8 @@ class MainActivity : AppCompatActivity() {
         const val KEY_ICON_STYLE = "icon_style"
 
         // 默认值
-        const val DEFAULT_GLASS_ALPHA = 50
-        const val DEFAULT_TINT_ALPHA = 50
+        const val DEFAULT_GLASS_ALPHA = 55
+        const val DEFAULT_TINT_ALPHA = 90
         const val DEFAULT_AUTO_COLOR = true
         const val DEFAULT_ICON_STYLE = 1
     }
@@ -52,6 +53,10 @@ class MainActivity : AppCompatActivity() {
         setContentView(R.layout.activity_main)
 
         initViews()
+        title = getString(R.string.app_name)
+        findViewById<TextView>(R.id.tv_app_version).text =
+            getString(R.string.main_subtitle) + " · " + AppBuildInfo.MARKER
+        Log.e(AppBuildInfo.LOG_TAG, "MainActivity ${AppBuildInfo.MARKER}")
         loadSettings()
         setupListeners()
         checkPermissions()
@@ -70,7 +75,7 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun setupListeners() {
-        // 玻璃透明度滑块
+        // 通透度滑块
         sliderGlassAlpha.addOnChangeListener { _, value, _ ->
             tvGlassAlphaValue.text = "${value.toInt()}%"
         }
@@ -137,17 +142,7 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun updateWidget() {
-        try {
-            val intent4x2 = Intent(this, MusicWidgetProvider::class.java)
-            intent4x2.action = BaseMusicWidgetProvider.ACTION_UPDATE_WIDGET
-            sendBroadcast(intent4x2)
-
-            val intent4x1 = Intent(this, MusicWidgetProvider4x1::class.java)
-            intent4x1.action = BaseMusicWidgetProvider.ACTION_UPDATE_WIDGET
-            sendBroadcast(intent4x1)
-        } catch (e: Exception) {
-            e.printStackTrace()
-        }
+        WidgetRefreshCoordinator.requestPush(this, immediate = true)
     }
 
     private fun checkPermissions() {

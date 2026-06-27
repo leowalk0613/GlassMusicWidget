@@ -16,16 +16,17 @@
         <TextView
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:text="玻璃音乐小部件"
+            android:text="@string/main_title"
             android:textSize="28sp"
             android:textColor="?attr/colorOnSurface"
             android:textStyle="bold"
             android:layout_marginBottom="4dp" />
 
         <TextView
+            android:id="@+id/tv_app_version"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:text="自定义你的音乐小部件"
+            android:text="@string/main_subtitle"
             android:textSize="14sp"
             android:textColor="?attr/colorOnSurfaceVariant"
             android:layout_marginBottom="32dp" />
@@ -141,13 +142,13 @@
                 <TextView
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:text="外观设置"
+                    android:text="@string/appearance_settings_title"
                     android:textSize="16sp"
                     android:textColor="?attr/colorOnSurface"
                     android:textStyle="bold"
                     android:layout_marginBottom="16dp" />
 
-                <!-- 玻璃透明度 -->
+                <!-- 通透度 -->
                 <LinearLayout
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
@@ -165,7 +166,7 @@
                             android:layout_width="0dp"
                             android:layout_height="wrap_content"
                             android:layout_weight="1"
-                            android:text="玻璃透明度"
+                            android:text="@string/transparency_label"
                             android:textSize="14sp"
                             android:textColor="?attr/colorOnSurface"
                             android:textStyle="bold" />
@@ -316,7 +317,7 @@
         <TextView
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:text="提示：长按桌面空白处，选择「添加小部件」，找到「玻璃音乐」即可添加到桌面"
+            android:text="@string/widget_add_hint"
             android:textSize="12sp"
             android:textColor="?attr/colorOnSurfaceVariant"
             android:gravity="center"

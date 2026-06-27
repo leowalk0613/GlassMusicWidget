@@ -1,15 +1,31 @@
 <?xml version="1.0" encoding="utf-8"?>
 <FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
-    android:layout_height="match_parent"
-    android:padding="4dp">
+    android:layout_height="match_parent">
+
+    <ImageView
+        android:id="@+id/tint_background"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:src="@drawable/widget_tint_fill_4x1"
+        android:scaleType="fitXY"
+        android:contentDescription="@null" />
 
     <ImageView
         android:id="@+id/glass_background"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
         android:src="@drawable/widget_glass_background_4x1"
-        android:scaleType="fitXY" />
+        android:scaleType="fitXY"
+        android:contentDescription="@null" />
+
+    <ImageView
+        android:id="@+id/glass_border"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:src="@drawable/widget_glass_border_4x1"
+        android:scaleType="fitXY"
+        android:contentDescription="@null" />
 
     <LinearLayout
         android:layout_width="match_parent"
