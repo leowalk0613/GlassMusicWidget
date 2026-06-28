@@ -54,6 +54,42 @@ abstract class BaseMusicWidgetProvider : AppWidgetProvider() {
 
         private val appNameCache = mutableMapOf<String, String>()
 
+        private val appNameMap = mapOf(
+            "com.netease.cloudmusic" to "网易云音乐",
+            "com.tencent.qqmusic" to "QQ音乐",
+            "com.kugou.android" to "酷狗音乐",
+            "com.kugou.android.lite" to "酷狗音乐概念版",
+            "com.kuwo.player" to "酷我音乐",
+            "cn.kuwo.player" to "酷我音乐",
+            "com.xiami.media" to "虾米音乐",
+            "com.miui.player" to "小米音乐",
+            "com.heytap.music" to "欢太音乐",
+            "com.meizu.media.music" to "魅族音乐",
+            "com.huawei.music" to "华为音乐",
+            "com.oppo.music" to "OPPO音乐",
+            "com.vivo.music" to "vivo音乐",
+            "com.samsung.android.music" to "三星音乐",
+            "com.google.android.youtube" to "YouTube Music",
+            "com.google.android.apps.youtube.music" to "YouTube Music",
+            "com.spotify.music" to "Spotify",
+            "com.apple.android.music" to "Apple Music",
+            "com.amazon.mp3" to "Amazon Music",
+            "deezer.android.app" to "Deezer",
+            "com.rapps.rave" to "Rave",
+            "com.jrtstudio.AnotherMusicPlayer" to "Poweramp",
+            "com.maxmpz.audioplayer" to "Poweramp",
+            "com.n7mobile.nplayer" to "N7Player",
+            "com.soundcloud.android" to "SoundCloud",
+            "com.pandora.android" to "Pandora",
+            "com.tidal.player" to "Tidal",
+            "fm.shanbay.music" to "汽水音乐",
+            "com.duokan.phone.remotecontroller" to "小米收音机",
+            "com.iflytek.aipm" to "讯飞听书",
+            "tv.danmaku.bili" to "哔哩哔哩",
+            "com.kuaishou.nebula" to "快手",
+            "com.ss.android.ugc.aweme" to "抖音"
+        )
+
         fun setMediaController(controller: MediaController?) {
             mediaController = controller
         }
@@ -557,6 +593,10 @@ abstract class BaseMusicWidgetProvider : AppWidgetProvider() {
     }
 
     private fun formatFallbackAppName(packageName: String): String {
+        val friendlyName = appNameMap[packageName]
+        if (friendlyName != null) {
+            return friendlyName
+        }
         val segment = packageName.substringAfterLast('.')
         if (segment.isBlank()) {
             return "音乐应用"

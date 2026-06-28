@@ -10,9 +10,12 @@ import android.os.Build
 import android.os.Bundle
 import android.provider.Settings
 import android.util.Log
+import android.view.View
+import android.view.WindowInsetsController
 import android.widget.TextView
 import android.widget.ImageView
 import androidx.appcompat.app.AppCompatActivity
+import com.google.android.material.color.DynamicColors
 import com.google.android.material.materialswitch.MaterialSwitch
 import com.google.android.material.slider.Slider
 import com.google.android.material.button.MaterialButton
@@ -49,9 +52,11 @@ class MainActivity : AppCompatActivity() {
     private lateinit var layoutMediaPermission: android.widget.LinearLayout
 
     override fun onCreate(savedInstanceState: Bundle?) {
+        DynamicColors.applyToActivityIfAvailable(this)
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
 
+        setupEdgeToEdge()
         initViews()
         title = getString(R.string.app_name)
         findViewById<TextView>(R.id.tv_app_version).text =
@@ -60,6 +65,32 @@ class MainActivity : AppCompatActivity() {
         loadSettings()
         setupListeners()
         checkPermissions()
+    }
+
+    private fun setupEdgeToEdge() {
+        window.statusBarColor = android.graphics.Color.TRANSPARENT
+        window.navigationBarColor = android.graphics.Color.TRANSPARENT
+        val isNight = (resources.configuration.uiMode and android.content.res.Configuration.UI_MODE_NIGHT_MASK) == android.content.res.Configuration.UI_MODE_NIGHT_YES
+        val insetsController = window.insetsController
+        if (insetsController != null) {
+            insetsController.setSystemBarsAppearance(
+                if (isNight) 0 else WindowInsetsController.APPEARANCE_LIGHT_STATUS_BARS,
+                WindowInsetsController.APPEARANCE_LIGHT_STATUS_BARS
+            )
+            insetsController.setSystemBarsAppearance(
+                if (isNight) 0 else WindowInsetsController.APPEARANCE_LIGHT_NAVIGATION_BARS,
+                WindowInsetsController.APPEARANCE_LIGHT_NAVIGATION_BARS
+            )
+        }
+        window.decorView.systemUiVisibility = (View.SYSTEM_UI_FLAG_LAYOUT_STABLE
+            or View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION
+            or View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN)
+        val content = findViewById<View>(android.R.id.content)
+        content.setOnApplyWindowInsetsListener { v, insets ->
+            val systemInsets = insets.systemWindowInsets
+            v.setPadding(systemInsets.left, systemInsets.top, systemInsets.right, systemInsets.bottom)
+            insets
+        }
     }
 
     private fun initViews() {
