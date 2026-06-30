@@ -384,6 +384,7 @@ abstract class BaseMusicWidgetProvider : AppWidgetProvider() {
             views.setTextViewText(R.id.tv_play_status, "未播放")
             views.setTextViewText(R.id.tv_song_title, "未在播放")
             views.setTextViewText(R.id.tv_artist_name, "—")
+            views.setImageViewResource(R.id.iv_album_art, R.drawable.default_album)
             setTextColors(views, Color.WHITE)
             return
         }

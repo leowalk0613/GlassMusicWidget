@@ -59,6 +59,8 @@ class MusicMonitorService : NotificationListenerService() {
 
         private const val WIDGET_UPDATE_MS = 400L
         private const val ART_REFRESH_MS = 900L
+        private const val PERIODIC_REFRESH_MS = 10000L
+        private const val RETRY_REFRESH_MS = 3000L
     }
 
     private var mediaSessionManager: MediaSessionManager? = null
@@ -67,8 +69,11 @@ class MusicMonitorService : NotificationListenerService() {
     private val mainHandler = Handler(Looper.getMainLooper())
     private var pendingWidgetUpdate: Runnable? = null
     private var delayedArtRefresh: Runnable? = null
+    private var periodicRefresh: Runnable? = null
+    private var retryRefresh: Runnable? = null
     private var pendingNeedsArtReload = false
     private var lastPlaybackStateCode: Int = PlaybackState.STATE_NONE
+    private var lastActivePackage: String? = null
     
     private val mediaSessionListener = object : MediaSessionManager.OnActiveSessionsChangedListener {
         override fun onActiveSessionsChanged(controllers: MutableList<MediaController>?) {
@@ -87,6 +92,7 @@ class MusicMonitorService : NotificationListenerService() {
         startForeground(NOTIFICATION_ID, createNotification())
         
         setupMediaSessionListener()
+        schedulePeriodicRefresh()
     }
 
     override fun onListenerConnected() {
@@ -174,19 +180,34 @@ class MusicMonitorService : NotificationListenerService() {
 
     private fun updateActiveSessions(controllers: List<MediaController>?) {
         if (controllers.isNullOrEmpty()) {
-            // 没有活动的会话
             clearCurrentSession()
             return
         }
         
-        // 找到正在播放的会话，或者取第一个
         val playingController = controllers.find { controller ->
             controller.playbackState?.state == android.media.session.PlaybackState.STATE_PLAYING
-        } ?: controllers.firstOrNull()
+        }
         
         if (playingController != null) {
             if (playingController.sessionToken != currentController?.sessionToken) {
                 switchToSession(playingController)
+            }
+        } else {
+            val pausedController = controllers.find { controller ->
+                controller.playbackState?.state == android.media.session.PlaybackState.STATE_PAUSED
+            }
+            
+            if (pausedController != null) {
+                if (pausedController.sessionToken != currentController?.sessionToken) {
+                    switchToSession(pausedController)
+                }
+            } else {
+                val firstController = controllers.firstOrNull()
+                if (firstController != null) {
+                    if (firstController.sessionToken != currentController?.sessionToken) {
+                        switchToSession(firstController)
+                    }
+                }
             }
         }
     }
@@ -194,7 +215,8 @@ class MusicMonitorService : NotificationListenerService() {
     private fun switchToSession(controller: MediaController) {
         Log.d(TAG, "Switching to session: ${controller.packageName}")
         
-        // 移除旧的回调
+        lastActivePackage = controller.packageName
+        
         if (mediaControllerCallback != null) {
             currentController?.unregisterCallback(mediaControllerCallback!!)
         }
@@ -230,11 +252,35 @@ class MusicMonitorService : NotificationListenerService() {
     }
 
     private fun clearCurrentSession() {
+        retryRefresh?.let { mainHandler.removeCallbacks(it) }
+        
+        retryRefresh = Runnable {
+            retryRefresh = null
+            try {
+                val componentName = android.content.ComponentName(this, MusicMonitorService::class.java)
+                val sessions = mediaSessionManager?.getActiveSessions(componentName)
+                if (!sessions.isNullOrEmpty()) {
+                    Log.d(TAG, "Retry found sessions: ${sessions.size}")
+                    updateActiveSessions(sessions)
+                    return@Runnable
+                }
+            } catch (e: Exception) {
+                Log.e(TAG, "Retry refresh error", e)
+            }
+            
+            reallyClearCurrentSession()
+        }
+        
+        mainHandler.postDelayed(retryRefresh!!, RETRY_REFRESH_MS)
+    }
+    
+    private fun reallyClearCurrentSession() {
         if (mediaControllerCallback != null) {
             currentController?.unregisterCallback(mediaControllerCallback!!)
         }
         currentController = null
         mediaControllerCallback = null
+        lastActivePackage = null
         
         MusicWidgetProvider.setMediaController(null)
         MusicWidgetProvider.setCurrentMetadata(null)
@@ -245,6 +291,54 @@ class MusicMonitorService : NotificationListenerService() {
         scheduleWidgetUpdate(reloadArt = false, delayMs = 0L)
     }
 
+    private fun schedulePeriodicRefresh() {
+        periodicRefresh?.let { mainHandler.removeCallbacks(it) }
+        periodicRefresh = Runnable {
+            try {
+                val componentName = android.content.ComponentName(this, MusicMonitorService::class.java)
+                val sessions = mediaSessionManager?.getActiveSessions(componentName)
+                
+                if (!sessions.isNullOrEmpty()) {
+                    val playingController = sessions.find { controller ->
+                        controller.playbackState?.state == android.media.session.PlaybackState.STATE_PLAYING
+                    }
+                    
+                    if (playingController != null && playingController.sessionToken != currentController?.sessionToken) {
+                        Log.d(TAG, "Periodic refresh found new playing session: ${playingController.packageName}")
+                        switchToSession(playingController)
+                    } else if (currentController == null) {
+                        val pausedController = sessions.find { controller ->
+                            controller.playbackState?.state == android.media.session.PlaybackState.STATE_PAUSED
+                        } ?: sessions.firstOrNull()
+                        
+                        if (pausedController != null) {
+                            Log.d(TAG, "Periodic refresh found paused session: ${pausedController.packageName}")
+                            switchToSession(pausedController)
+                        }
+                    } else {
+                        val currentPkg = currentController?.packageName
+                        val sessionExists = sessions.any { it.packageName == currentPkg }
+                        if (!sessionExists) {
+                            Log.d(TAG, "Periodic refresh: current session lost, rechecking")
+                            val availableController = sessions.find { controller ->
+                                controller.playbackState?.state == android.media.session.PlaybackState.STATE_PLAYING
+                            } ?: sessions.firstOrNull()
+                            if (availableController != null) {
+                                switchToSession(availableController)
+                            }
+                        }
+                    }
+                }
+            } catch (e: Exception) {
+                Log.e(TAG, "Periodic refresh error", e)
+            }
+            
+            periodicRefresh?.let { mainHandler.postDelayed(it, PERIODIC_REFRESH_MS) }
+        }
+        
+        mainHandler.postDelayed(periodicRefresh!!, PERIODIC_REFRESH_MS)
+    }
+    
     private fun updateProviderData(reloadArt: Boolean = true) {
         val controller = currentController
         if (controller == null) {
@@ -471,6 +565,10 @@ class MusicMonitorService : NotificationListenerService() {
         pendingWidgetUpdate = null
         delayedArtRefresh?.let { mainHandler.removeCallbacks(it) }
         delayedArtRefresh = null
+        periodicRefresh?.let { mainHandler.removeCallbacks(it) }
+        periodicRefresh = null
+        retryRefresh?.let { mainHandler.removeCallbacks(it) }
+        retryRefresh = null
         WidgetRefreshCoordinator.cancel()
         super.onDestroy()
         Log.d(TAG, "MusicMonitorService onDestroy")
